@@ -1,0 +1,161 @@
+---
+title: "homework-2"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{homework-2}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+##Problem 1
+We already know that:
+$$
+\hat\beta=(X^TX)^{-1}X^TY
+$$
+And we can have:
+$$
+\hat\beta=(n^{-1}X^TX)^{-1}(n^{-1}X^TY)\\
+n^{-1}X^TY=n^{-1}\left(\begin{array}{cc} 
+\sum_1^ny_i \\
+\sum_1^nx_iy_i \end{array}\right)
+=\left(\begin{array}{cc} \overline y \\\overline{xy} \end{array}\right)\\
+n^{-1}X^TX=n^{-1}\left(\begin{array}{cc} 
+n & \sum_1^nx_i \\ \sum_1^nx_i & \sum_1^nx_i^2 \end{array}\right)=
+\left(\begin{array}{cc} 
+1 & \overline x \\
+\overline x & \overline{x^2} \end{array}\right)
+$$
+And take inverse of that:
+$$
+(\frac{1}{n}X^TX)^{-1}=\frac{1}{\overline{x^2}-\overline{x}^2}\left(\begin{array}{cc} 
+\overline{x^2} & -\overline x \\ -\overline x & 1 \end{array}\right)=
+\frac{1}{s_x^2}\left(\begin{array}{cc} 
+\overline{x^2} & -\overline x \\
+-\overline x & 1 \end{array}\right)
+$$
+And multiply these together:
+$$
+(X^TX)^{-1}X^TY=\frac{1}{s_x^2}\left(\begin{array}{cc} 
+\overline{x^2} & -\overline x \\
+-\overline x & 1 \end{array}\right)
+\left(\begin{array}{cc} 
+\overline{y} \\
+\overline{xy} \end{array}\right)=\frac{1}{s_x^2}\left(\begin{array}{cc} 
+\overline{x^2}\overline{y} -\overline{xxy} \\
+-\overline{xy}+\overline{xy} \end{array}\right)\\=
+\frac{1}{s_x^2}\left(\begin{array}{cc} 
+(s_X^2+\overline{x}^2)\overline{y} -\overline{x}(C_{XY}+\overline{xy}) \\
+C_{XY} \end{array}\right)=\frac{1}{s_x^2}\left(\begin{array}{cc} 
+s_X^2\overline y +\overline{x}^2\overline{y} -\overline{x}C_{XY}-\overline{x^2}\overline y \\C_{XY} \end{array}\right)\\=\left(\begin{array}{cc} 
+\overline y -\frac{C_{XY}}{s_X^2}\overline{x} \\ \frac{C_{XY}}{s_X^2} \end{array}\right)
+$$
+So,
+$$
+\left(\begin{array}{cc} 
+\beta_0 \\ \beta_1 \end{array}\right)
+=\left(\begin{array}{cc} 
+\overline y -\frac{C_{XY}}{s_X^2}\overline{x} \\ \frac{C_{XY}}{s_X^2} \end{array}\right)
+$$
+
+
+##Problem 4
+As the numerical stability decreases, statistical errors increase.
+Numerical stability can be represented by the condition number of matrix x. The larger condition number is, the less numerical stability is.
+Statistical error is represented by mean squared error, and approxed by mean error rate.
+
+```{r}
+library(casl)
+#randomly generate x matrix with n samples and p parameters
+#generate real beta vector
+n<-1000
+p<-10
+beta<-c(1,2,3,4,5,rep(0,p-5))
+set.seed(12345)
+x<-matrix(rnorm(n*p),ncol=p)
+
+#condition number
+svals<-svd(crossprod(x))$d
+max(svals)/min(svals)
+
+#mean square error
+N<-10000
+mean.error<-rep(0,N)
+for (k in 1:N){
+  y<-x %*% beta +rnorm(n)
+  betahat<-casl_ols_svd(x,y)
+  mean.error[k]<-sqrt(sum((betahat-beta)^2))
+}
+mean(mean.error)
+
+#Replace the first column of x with a linear combination of the original first column and the second column.
+alpha<-0.001
+x2<-x
+x2[,1]<-x[,1]*alpha+x[,2]*(1-alpha)
+
+#condition number is larger
+svals <- svd(crossprod(x2))$d
+max(svals) / min(svals)
+
+#mean square error gets larger
+N<-10000
+mean.error<-rep(0,N)
+for (k in 1:N){
+  y<-x2 %*% beta +rnorm(n)
+  betahat<-casl_ols_svd(x2,y)
+  mean.error[k]<-sqrt(sum((betahat-beta)^2))
+}
+mean(mean.error)
+```
+
+Use ridge regression can increase numerical stability and decrease statistical error.
+```{r}
+#ridge regression for x
+lambda=0.1
+x_ridge<-crossprod(x) + diag(rep(lambda, ncol(x)))
+
+#condition number decreases
+svals<-svd(x_ridge)$d
+max(svals)/min(svals)
+
+#mean square error for ridge regression
+N<-10000
+mean.error<-rep(0,N)
+for (k in 1:N){
+  y<-x %*% beta +rnorm(n)
+  betahat<-solve(crossprod(x)+diag(rep(lambda,ncol(x)))) %*% t(x) %*% y
+  mean.error[k]<-sqrt(sum((betahat-beta)^2))
+}
+mean(mean.error)
+```
+
+
+##Problem 5
+For lasso penalty:
+$$
+f(\beta)=\frac{1}{2n}||Y-x\beta||_2^2 + \lambda||\beta||_1
+$$
+We take the derivative:
+$$
+\frac{\partial f}{\partial \beta}=-\frac{1}{n}X^T(Y-X\beta) + \lambda sign(\beta)
+$$
+set this to 0:
+$$
+\hat\beta =\frac{1}{n}X^TY-\lambda sign(\hat\beta)
+$$
+If $\hat\beta$ is greater or equal to 0, and $|X_j^TY|\leq n\lambda$ then:
+$$
+\hat\beta \leq\frac{1}{n}n\lambda-\lambda
+$$
+So, $\hat\beta$ <= 0, and in this situation it can only equal to 0. 
+The situation is similar when $\hat\beta$ is less or equal to 0:
+$$
+\hat\beta \geq-\frac{1}{n}n\lambda+\lambda
+$$
+So, $\hat\beta$ >= 0, and in this situation can only be 0.

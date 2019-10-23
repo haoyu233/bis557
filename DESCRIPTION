@@ -1,0 +1,18 @@
+Package: bis557
+Title: Some ridge regreesion functions for HW2
+Version: 0.0.0.9000
+Authors@R: person(given = "Haoyu",
+           family = "Liu",
+           role = c("aut", "cre"),
+           email = "haoyu.liu@yale.edu")
+Description: This package include the HW2 results. Problem 1/4/5 appears as a vignette in the pakage called "homework-2".
+             Solution to problem 2 and 3 is implemented as function with documentation and regression testing.
+License: LGPL-2
+Encoding: UTF-8
+LazyData: true
+Imports: leaflet, dplyr, casl, crayon, rsample, foreach
+RoxygenNote: 6.1.1
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
